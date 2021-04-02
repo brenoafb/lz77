@@ -1,99 +1,127 @@
 import Foundation
 
-typealias LZ77Tuple = (Character?, Int, Int)
-
-struct LZ77Encoder {
-  let input: String
+struct LZ77Encoder: CustomDebugStringConvertible {
+  let input: [UInt8]
   let bufferSize: Int
+  let lookaheadBufferSize: Int
   var current = 0
   
-  var bufferStart: Int {
-    current - bufferSize
+  private var bufferStart: Int {
+    max(0, current - bufferSize)
   }
-  var currentIndex: String.Index {
-    input.index(input.startIndex, offsetBy: current)
+  
+  private var lookaheadBufferEnd: Int {
+    min(input.count, current + lookaheadBufferSize)
   }
-  var bufferStartIndex: String.Index? {
-    if bufferStart < 0 {
-      return input.startIndex
-    } else {
-      return input.index(input.startIndex, offsetBy: bufferStart)
-    }
+  
+  private var buffer: ArraySlice<UInt8> {
+    return input[bufferStart ..< current]
   }
-  var buffer: Substring? {
-    guard let bufferStartIndex = bufferStartIndex else {
-      return nil
-    }
-    
-    return input[bufferStartIndex ..< currentIndex]
+  
+  private var indexLookup: IndexLookup {
+    IndexLookup(buffer: buffer)
+  }
+  
+  private var lookaheadBuffer: ArraySlice<UInt8> {
+    return input[current ..< lookaheadBufferEnd]
   }
   
   var debugDescription: String {
-    "|\(buffer ?? "")|\(input[currentIndex..<input.endIndex])"
+    "|\(buffer)|\(input[current..<input.endIndex])"
   }
   
   mutating func encode() -> [LZ77Tuple] {
     var tokens: [LZ77Tuple] = []
-  
+    
     var token = step()
     
-    while (token.0 != nil) {
+    while (token.byte != nil) {
       tokens.append(token)
       token = step()
     }
     
+    tokens.append(token)
+    
     return tokens
   }
   
-  mutating func step() -> LZ77Tuple {
-    print(debugDescription)
-    guard currentIndex < input.endIndex else {
-      return (nil, 0, 0)
+  private mutating func step() -> LZ77Tuple {
+    guard current < input.endIndex else {
+      return LZ77Tuple(byte: nil, offset: 0, length: 0)
     }
     
     guard var pointer = findInBuffer() else {
-      let curr = input[currentIndex]
+      let curr = input[current]
       advance()
-      return (curr, 0, 0)
+      return LZ77Tuple(byte: curr, offset: 0, length: 0)
     }
     
-    let offset = Int(input.distance(from: pointer, to: currentIndex))
+    let offset = current - pointer
     var matchLength: Int = 0
     
-    while (currentIndex < input.endIndex && input[currentIndex] == input[pointer]) {
-      pointer = input.index(after: pointer)
+    while (matchLength < 255 && current < input.count && input[current] == input[pointer]) {
+      pointer += 1
       advance()
       matchLength += 1
     }
     
-    if (currentIndex == input.endIndex) {
-      return (nil, offset, matchLength)
+    if (current == input.count) {
+      return LZ77Tuple(byte: nil, offset: offset, length: matchLength)
     }
     
-    let c = input[currentIndex]
+    let b = input[current]
     advance()
-    return (c, offset, matchLength)
+    return LZ77Tuple(byte: b, offset: offset, length: matchLength)
   }
   
-  mutating func advance() {
+  private mutating func advance() {
     current += 1
   }
   
   func printWindow(offset: Int) {
-    let endIndex = input.index(currentIndex, offsetBy: offset)
-    print("|\(buffer ?? "")|\(input[currentIndex..<endIndex])")
+    let endIndex = min(current + offset, input.count)
+    print("|\(buffer)|\(input[current..<endIndex])")
   }
   
-  func findInBuffer() -> String.Index? {
-    if currentIndex >= input.endIndex {
+  private func findInBuffer() -> Int? {
+    if current >= input.endIndex {
       return nil
     }
-    return buffer?.firstIndex(of: input[currentIndex])
+    return longestPrefixIndex()
+  }
+  
+  private func longestPrefixIndex() -> Int? {
+    var startIndex: Int? = nil
+    var length: Int? = nil
+    
+    guard let offsets = indexLookup.lookupOffsets(byte: input[current]) else {
+      return nil
+    }
+    
+    for offset in offsets {
+      let index = bufferStart + offset
+      
+      let matchLength = prefixLength(startingAt: index)
+      
+      if length == nil || matchLength >= length! {
+        startIndex = index
+        length = matchLength
+      }
+      
+    }
+    
+    return startIndex
+  }
+  
+  private func prefixLength(startingAt backIndex: Int) -> Int {
+    var matchLength = 0
+    var index0 = current
+    var index1 = backIndex
+    while index0 < lookaheadBufferEnd && input[index0] == input[index1] {
+      matchLength += 1
+      index0 = input.index(after: index0)
+      index1 = input.index(after: index1)
+    }
+    return matchLength
   }
 }
-
-//extension LZ77Encoder: CustomDebugStringConvertible {
-//  var debugDescription: String {
-//    "|\(buffer ?? "")|\(input[currentIndex..<input.endIndex])"
-//  }
-//}

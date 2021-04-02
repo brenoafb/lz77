@@ -2,16 +2,11 @@ import Foundation
 
 struct LZ77Decoder {
   let tokens: [LZ77Tuple]
-  var buffer = ""
-  
-  mutating func decode() -> String {
+  var buffer: [UInt8] = []
+
+  mutating func decode() -> [UInt8] {
     for token in tokens {
-      guard token.0 != nil else {
-        return buffer
-      }
-      
       decodeToken(token)
-      print(buffer)
     }
     
     return buffer
@@ -19,18 +14,15 @@ struct LZ77Decoder {
   
   mutating func decodeToken(_ token: LZ77Tuple) {
     
-    let offset = token.1
-    let length = token.2
+    var startIndex = buffer.index(buffer.endIndex, offsetBy: -Int(token.offset))
     
-    var startIndex = buffer.index(buffer.endIndex, offsetBy: -offset)
-    
-    for _ in 0 ..< length {
+    for _ in 0 ..< token.length {
       buffer.append(buffer[startIndex])
       startIndex = buffer.index(after: startIndex)
     }
     
-    if let c = token.0 {
-      buffer.append(String(c))
+    if let b = token.byte {
+      buffer.append(b)
     }
   }
 }
