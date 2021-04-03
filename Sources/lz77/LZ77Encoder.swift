@@ -2,8 +2,24 @@ import Foundation
 
 struct LZ77Encoder: CustomDebugStringConvertible {
   let input: [UInt8]
-  let bufferSize: Int
-  let lookaheadBufferSize: Int
+  
+  let configuration: Configuration
+  
+  var bufferSize: Int {
+    configuration.bufferSize
+  }
+  
+  var lookaheadBufferSize: Int {
+    configuration.lookaheadBufferSize
+  }
+  
+  var minMatchLength: Int {
+    configuration.minMatchLength
+  }
+  
+  var maxMatchLength: Int {
+    configuration.maxMatchLength
+  }
   var current = 0
   
   private var bufferStart: Int {
@@ -59,7 +75,7 @@ struct LZ77Encoder: CustomDebugStringConvertible {
     let offset = current - pointer
     var matchLength: Int = 0
     
-    while (matchLength < 255 && current < input.count && input[current] == input[pointer]) {
+    while (matchLength < maxMatchLength && current < input.count && input[current] == input[pointer]) {
       pointer += 1
       advance()
       matchLength += 1
@@ -103,7 +119,7 @@ struct LZ77Encoder: CustomDebugStringConvertible {
       
       let matchLength = prefixLength(startingAt: index)
       
-      if length == nil || matchLength >= length! {
+      if matchLength >= minMatchLength && (length == nil || matchLength >= length!) {
         startIndex = index
         length = matchLength
       }

@@ -1,0 +1,6 @@
+{
+  "bufferSize": 255,
+  "lookaheadBufferSize": 255,
+  "minMatchLength": 1,
+  "maxMatchLength": 255
+}

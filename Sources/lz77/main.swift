@@ -1,20 +1,16 @@
 import Foundation
 
-//let input = "Oh look at this chap he is like Oh look at this chap he thinks he is so cool wtf look at this chap"
-//var lz77Encoder = LZ77Encoder(input: input, bufferSize: 8, lookaheadBufferSize: 8)
-//let encoded = lz77Encoder.encode()
-//print(encoded)
-//print("\(input.count) vs \(encoded.count)")
-//
-//var lz77Decoder = LZ77Decoder(tokens: encoded)
-//let decoded = lz77Decoder.decode()
-//print(decoded)
-//
-//if decoded != input {
-//  print("Warning: decode != input")
-//}
-
-
+func readConfiguation(configurationFilename: String = "configuration.json") -> Configuration {
+  let url = URL(fileURLWithPath: configurationFilename)
+  guard let contents = try? String(contentsOf: url),
+        let data = contents.data(using: .utf8),
+        let configuration = try? JSONDecoder().decode(Configuration.self, from: data)
+  else {
+    return defaultConfiguration
+  }
+  
+  return configuration
+}
 
 if CommandLine.argc != 4 {
   print("Please provide option, input and output filenames")
@@ -22,13 +18,15 @@ if CommandLine.argc != 4 {
   exit(0)
 }
 
+
 let option = CommandLine.arguments[1]
 let inputFilename = CommandLine.arguments[2]
 let outputFilename = CommandLine.arguments[3]
 
 switch option {
 case "-c":
-  compress(inputFilename, outputFilename)
+  let configuration = readConfiguation()
+  compress(inputFilename, outputFilename, configuration)
 case "-d":
   decompress(inputFilename, outputFilename)
 default:
@@ -36,10 +34,10 @@ default:
   exit(0)
 }
 
-func compress(_ inputFilename: String, _ outputFilename: String) {
+func compress(_ inputFilename: String, _ outputFilename: String, _ configuration: Configuration) {
   let inputData = try! Data(contentsOf: URL(fileURLWithPath: inputFilename))
   let contents: [UInt8] = Array(inputData)
-  var lz77Encoder = LZ77Encoder(input: contents, bufferSize: 255, lookaheadBufferSize: 255)
+  var lz77Encoder = LZ77Encoder(input: contents, configuration: configuration)
   let encoded = lz77Encoder.encode()
   print("encoded.count: \(encoded.count)")
   
@@ -48,14 +46,6 @@ func compress(_ inputFilename: String, _ outputFilename: String) {
   let data = Data(bytes)
   
   try! data.write(to: URL(fileURLWithPath: outputFilename))
-//  print("Data size: \(data.count)")
-//  print("Huffman encoding stage")
-//  let huffman = Huffman()
-//  let compressedData = huffman.compressData(data: data)
-//  print("Compressed data size: \(compressedData.count)")
-//  print("Writing output file")
-//  let url = URL(fileURLWithPath: outputFilename)
-//  try! compressedData.write(to: url)
 }
 
 func decompress(_ inputFilename: String, _ outputFilename: String) {
@@ -75,10 +65,4 @@ func decompress(_ inputFilename: String, _ outputFilename: String) {
   let writeData = Data(decoded)
   
   try! writeData.write(to: URL(fileURLWithPath: outputFilename))
-  
-//  let array = data.withUnsafeBytes { (pointer: UnsafePointer<UInt32>) -> [UInt32] in
-//    let buffer = UnsafeBufferPointer(start: pointer, count: data.count/4)
-//    return [UInt32](buffer)
-//  }
-  
 }
