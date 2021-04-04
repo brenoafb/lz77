@@ -25,3 +25,25 @@ You can provide custom parameters for the encoder in the `configuration.json` fi
 ```
 
 For this implementation, the maximum value for each parameter is 255.
+
+## Compression/Decompression Scripts
+
+There are two scripts -- `compress.sh` and `decompress.sh` -- that combine
+the LZ77 encoder with a [Huffman tree encoder](https://github.com/brenoafb/hhuff).
+The Huffman encoder is implemented in Haskell and can be installed with
+the stack too by using `stack install` in that project's directory.
+
+## Analysis Scripts
+
+The `extract_data.sh` and `plot.py` scripts are intended to be used
+for extracting data concerning the distribution of lengths and offsets
+in the LZ77 compressed files.
+
+Example usage:
+
+```bash
+$ swift run lz77 input.txt compressed.lz77
+$ ./extract_data.sh compressed.lz77  # extracts lengths and offsets
+$ python3 plot.py lengths_compressed.lz77
+$ python3 plot.py offsets_compressed.lz77
+```
